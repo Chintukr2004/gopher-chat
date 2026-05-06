@@ -2,59 +2,90 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GopherChat Test</title>
     <style>
-        body { font-family: sans-serif; background: #f4f4f9; padding: 20px; }
-        #chat-box { width: 400px; height: 300px; background: white; border: 1px solid #ccc; overflow-y: auto; margin-bottom: 10px; padding: 10px; }
-        .message { margin-bottom: 5px; padding: 5px; background: #e2e8f0; border-radius: 4px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #e2e8f0; padding: 20px; display: flex; justify-content: center; }
+        .chat-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 500px; }
+        #chat-box { height: 350px; border: 1px solid #cbd5e1; border-radius: 4px; overflow-y: auto; margin-bottom: 15px; padding: 15px; background: #f8fafc; }
+        .message { margin-bottom: 10px; padding: 8px 12px; background: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 4px; font-size: 14px; }
+        .system-msg { color: #64748b; font-size: 12px; font-style: italic; text-align: center; margin-bottom: 10px; }
+        .input-group { display: flex; gap: 10px; }
+        input[type="text"] { flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px; outline: none; }
+        button { padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #2563eb; }
     </style>
 </head>
 <body>
 
-    <h2>GopherChat Test Client</h2>
-    <div id="chat-box"></div>
-    <input type="text" id="msg-input" placeholder="Type a message..." autofocus>
-    <button onclick="sendMessage()">Send</button>
+    <div class="chat-container">
+        <h2 id="header-title">GopherChat</h2>
+        <div id="chat-box"></div>
+        <div class="input-group">
+            <input type="text" id="msg-input" placeholder="Type your message..." autofocus>
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
 
     <script>
+        let username = prompt("Welcome to GopherChat! Enter your display name:") || "Anonymous";
+        document.getElementById("header-title").innerText = `GopherChat (${username})`;
+
         const chatBox = document.getElementById("chat-box");
         const msgInput = document.getElementById("msg-input");
         let conn;
 
-        // Check if the browser supports WebSockets
         if (window["WebSocket"]) {
-            // Connect to our Go backend
             conn = new WebSocket("ws://" + document.location.host + "/ws");
             
-            // Listen for incoming messages from the Go Hub
+            conn.onopen = function () {
+                appendSystemMessage("Connected to the server.");
+            }
+
             conn.onmessage = function (evt) {
                 const messages = evt.data.split('\n');
                 for (let i = 0; i < messages.length; i++) {
-                    const msgDiv = document.createElement("div");
-                    msgDiv.className = "message";
-                    msgDiv.innerText = messages[i];
-                    chatBox.appendChild(msgDiv);
-                    chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll
+                    if (messages[i].trim() !== "") {
+                        appendMessage(messages[i]);
+                    }
                 }
             };
             
             conn.onclose = function (evt) {
-                const item = document.createElement("div");
-                item.innerHTML = "<b>Connection closed.</b>";
-                chatBox.appendChild(item);
+                appendSystemMessage("Connection closed. Server might be down.");
             };
         } else {
-            chatBox.innerHTML = "<b>Your browser does not support WebSockets.</b>";
+            appendSystemMessage("Your browser does not support WebSockets.");
+        }
+
+        function appendMessage(text) {
+            const msgDiv = document.createElement("div");
+            msgDiv.className = "message";
+            const splitIndex = text.indexOf(":");
+            if (splitIndex !== -1) {
+                msgDiv.innerHTML = `<strong>${text.substring(0, splitIndex)}</strong>:${text.substring(splitIndex + 1)}`;
+            } else {
+                msgDiv.innerText = text; 
+            }
+            
+            chatBox.appendChild(msgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function appendSystemMessage(text) {
+            const msgDiv = document.createElement("div");
+            msgDiv.className = "system-msg";
+            msgDiv.innerText = text;
+            chatBox.appendChild(msgDiv);
         }
 
         function sendMessage() {
             if (!conn || !msgInput.value) return;
-            // Send the message to the Go Backend (this hits the readPump)
-            conn.send(msgInput.value);
+            const formattedMsg = `${username}: ${msgInput.value}`;
+            conn.send(formattedMsg);
             msgInput.value = "";
         }
 
-        // Allow pressing "Enter" to send
         msgInput.addEventListener("keypress", function(event) {
             if (event.key === "Enter") {
                 event.preventDefault();
