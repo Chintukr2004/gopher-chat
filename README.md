@@ -38,7 +38,7 @@ You can run the entire infrastructure locally using Docker.
 
 1. **Clone the repository:**
    ```bash
-   git clone [https://github.com/Chintukr2004/gopher-chat.git](https://github.com/your-username/gopher-chat.git)
+   git clone [https://github.com/Chintukr2004/gopher-chat.git](https://github.com/Chintukr2004/gopher-chat.git)
    cd gopher-chat
    ```
 
