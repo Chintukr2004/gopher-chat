@@ -1,22 +1,65 @@
 package main
 
+import (
+	"context"
+	"log"
+
+	"github.com/redis/go-redis/v9"
+)
+
+var ctx = context.Background()
+
 type Hub struct {
-	clients    map[*Client]bool
-	boadcast   chan []byte
-	register   chan *Client
-	unregister chan *Client
+	clients     map[*Client]bool
+	boadcast    chan []byte
+	register    chan *Client
+	unregister  chan *Client
+	redisClient *redis.Client
 }
 
 func NewHub() *Hub {
+
+	rdb := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
+
 	return &Hub{
-		boadcast:   make(chan []byte),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
-		clients:    make(map[*Client]bool),
+		boadcast:    make(chan []byte),
+		register:    make(chan *Client),
+		unregister:  make(chan *Client),
+		clients:     make(map[*Client]bool),
+		redisClient: rdb,
 	}
 }
 
+// his function listens to Redis for messages coming from ANY server instance
+func (h *Hub) listenToRedis() {
+	//subscribe to a central channel named "chat_channl"
+	pubsub := h.redisClient.Subscribe(ctx, "chat_channel")
+	defer pubsub.Close()
+
+	ch := pubsub.Channel()
+
+	for msg := range ch {
+		messageBytes := []byte(msg.Payload)
+
+		for client := range h.clients {
+			select {
+			case client.send <- messageBytes:
+			default:
+				close(client.send)
+				delete(h.clients, client)
+			}
+		}
+
+	}
+
+}
+
 func (h *Hub) Run() {
+
+	go h.listenToRedis()
+
 	for {
 		select {
 		case client := <-h.register:
@@ -27,15 +70,9 @@ func (h *Hub) Run() {
 				close(client.send)
 			}
 		case message := <-h.boadcast:
-			for client := range h.clients {
-				select {
-				case client.send <- message:
-				//message send succesfully
-				default:
-					// if client buffer is full, they stuck. Disconnect them to save server resources
-					close(client.send)
-					delete(h.clients, client)
-				}
+			err := h.redisClient.Publish(ctx, "chat_channel", message).Err()
+			if err != nil {
+				log.Println("Error publishing to Redis:", err)
 			}
 		}
 	}
