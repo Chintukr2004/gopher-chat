@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>GopherChat Test</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f4f9; padding: 20px; }
+        #chat-box { width: 400px; height: 300px; background: white; border: 1px solid #ccc; overflow-y: auto; margin-bottom: 10px; padding: 10px; }
+        .message { margin-bottom: 5px; padding: 5px; background: #e2e8f0; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+    <h2>GopherChat Test Client</h2>
+    <div id="chat-box"></div>
+    <input type="text" id="msg-input" placeholder="Type a message..." autofocus>
+    <button onclick="sendMessage()">Send</button>
+
+    <script>
+        const chatBox = document.getElementById("chat-box");
+        const msgInput = document.getElementById("msg-input");
+        let conn;
+
+        // Check if the browser supports WebSockets
+        if (window["WebSocket"]) {
+            // Connect to our Go backend
+            conn = new WebSocket("ws://" + document.location.host + "/ws");
+            
+            // Listen for incoming messages from the Go Hub
+            conn.onmessage = function (evt) {
+                const messages = evt.data.split('\n');
+                for (let i = 0; i < messages.length; i++) {
+                    const msgDiv = document.createElement("div");
+                    msgDiv.className = "message";
+                    msgDiv.innerText = messages[i];
+                    chatBox.appendChild(msgDiv);
+                    chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll
+                }
+            };
+            
+            conn.onclose = function (evt) {
+                const item = document.createElement("div");
+                item.innerHTML = "<b>Connection closed.</b>";
+                chatBox.appendChild(item);
+            };
+        } else {
+            chatBox.innerHTML = "<b>Your browser does not support WebSockets.</b>";
+        }
+
+        function sendMessage() {
+            if (!conn || !msgInput.value) return;
+            // Send the message to the Go Backend (this hits the readPump)
+            conn.send(msgInput.value);
+            msgInput.value = "";
+        }
+
+        // Allow pressing "Enter" to send
+        msgInput.addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
