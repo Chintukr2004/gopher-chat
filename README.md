@@ -44,12 +44,12 @@ You can run the entire infrastructure locally using Docker.
 
 2. **Start the Infrastructure (Redis & Postgres):**
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
 3. **Start the Go Engine:**
    ```bash
-   go run main.go hub.go client.go db.go
+   go run .
    ```
 
 4. **Test the System:**
