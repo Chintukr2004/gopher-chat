@@ -8,3 +8,18 @@ services:
       - "6379:6379"
     
     command: redis-server --save 60 1 --loglevel warning
+  postgres:
+    image: postgres:15-alpine
+    container_name: gopher-postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: chatdb
+    ports:
+      - "5433:5432"
+    # Keep data persistent even if the container stops
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:  

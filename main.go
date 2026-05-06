@@ -25,6 +25,13 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	// /3. Register the new client with the hub
 	client.hub.register <- client
 
+	go func(){
+		history := GetMessageHistory()
+		for _, msg := range history{
+			client.send <- msg
+		}
+	}()
+
 	//4. Start the Read and Write pumps in seperate GOroutines!
 	go client.writePump()
 	go client.readPump()
@@ -42,6 +49,7 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	InitDB()
 	hub := NewHub()
 
 	go hub.Run()

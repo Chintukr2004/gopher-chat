@@ -70,6 +70,8 @@ func (h *Hub) Run() {
 				close(client.send)
 			}
 		case message := <-h.boadcast:
+			// Save the message to Postgres first!
+			SaveMessage(message)
 			err := h.redisClient.Publish(ctx, "chat_channel", message).Err()
 			if err != nil {
 				log.Println("Error publishing to Redis:", err)
